@@ -1,72 +1,72 @@
 name: Release
 
+# Push a tag like v0.1.0 to publish binaries for the curl | bash installer
+# (https://md-tui.over9000.cc/install.sh). Everything cross-compiles on the
+# self-hosted Linux runner with cargo-zigbuild: GitHub-hosted runners are
+# blocked by org billing.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish, e.g. v0.1.0"
+        required: true
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-md-tui
+  cancel-in-progress: false
+
 jobs:
-  binaries:
-    name: ${{ matrix.artifact }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact: md-linux-x86_64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: md-macos-aarch64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact: md-macos-x86_64
+  release:
+    runs-on: [self-hosted, gb]
+    timeout-minutes: 60
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      CARGO_BUILD_JOBS: "2"
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.83.0
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-unknown-linux-musl,aarch64-unknown-linux-musl,x86_64-apple-darwin,aarch64-apple-darwin
+
+      - name: Install zig and cargo-zigbuild
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zig"
+          "$RUNNER_TEMP/zig/bin/pip" install -q ziglang==0.13.0
+          echo "$RUNNER_TEMP/zig/bin" >> "$GITHUB_PATH"
+          command -v cargo-zigbuild || cargo install --locked cargo-zigbuild@0.19.8
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }} -p md
-
-      - name: Package
-        shell: bash
         run: |
-          bin="target/${{ matrix.target }}/release/md"
-          test -x "$bin"
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp "$bin" "${{ matrix.artifact }}.exe"
-          else
-            cp "$bin" "${{ matrix.artifact }}"
-          fi
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
-
-  release:
-    name: GitHub release
-    needs: binaries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+          set -euo pipefail
+          mkdir -p dist
+          build() {
+            cargo zigbuild --release --target "$1" -p md
+            cp "target/$1/release/md" "dist/md-$2"
+          }
+          build x86_64-unknown-linux-musl linux-x86_64
+          build aarch64-unknown-linux-musl linux-aarch64
+          build x86_64-apple-darwin macos-x86_64
+          build aarch64-apple-darwin macos-aarch64
+          ./target/x86_64-unknown-linux-musl/release/md --version
+          (cd dist && sha256sum md-* > SHA256SUMS && cat SHA256SUMS)
 
       - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "md $TAG" --generate-notes --verify-tag
+          fi

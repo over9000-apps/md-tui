@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, gb]
     steps:
       - name: Check out
         uses: actions/checkout@v4

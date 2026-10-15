@@ -16,7 +16,15 @@ wrangler.jsonc Cloudflare Worker static assets. Not Pages.
 
 ## Terminal
 
-Rust 1.83 or newer (edition 2021), on Linux or macOS. The repo pins 1.83 in `rust-toolchain.toml`.
+Install a prebuilt binary (macOS arm64/x86_64, Linux x86_64/aarch64, WSL) into `~/.local/bin`:
+
+```bash
+curl -fsSL https://md-tui.over9000.cc/install.sh | bash
+```
+
+Set `MD_INSTALL_DIR` to pick another directory or `MD_VERSION=v0.1.0` to pin a release. Releases come from pushing a `v*` tag (`.github/workflows/release.yml`).
+
+From source, with Rust 1.83 or newer (edition 2021), on Linux or macOS. The repo pins 1.83 in `rust-toolchain.toml`.
 
 ```bash
 cargo install --path crates/md

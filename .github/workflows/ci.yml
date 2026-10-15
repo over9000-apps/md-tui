@@ -8,12 +8,10 @@ on:
 
 jobs:
   rust:
-    name: cargo test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+    name: cargo test
+    # GitHub-hosted runners are blocked by org billing; macOS is covered by the
+    # cross-compiled release builds.
+    runs-on: [self-hosted, gb]
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -26,7 +24,7 @@ jobs:
 
   web:
     name: web test and build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, gb]
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -51,3 +49,8 @@ jobs:
 
       - name: Analytics tag is in the built page
         run: grep -Fq 'G-FG52JBJRPS' web/dist/index.html
+
+      - name: Installer is served from the site root
+        run: |
+          bash -n install.sh
+          cmp install.sh web/dist/install.sh

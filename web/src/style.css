@@ -518,3 +518,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .outline { transition: none; }
 }
+
+.install {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 18px 0;
+  padding: 8px 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.install-label { color: var(--muted); }
+.install code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  color: var(--inline-code-fg);
+}
+.install button {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.install button:hover { background: var(--outline-sel); }
