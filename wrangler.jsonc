@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Assets-only Worker (no Worker script, not Pages). `assets.binding` is
+  // omitted on purpose: it is only valid when `main` is set.
+  "name": "md-tui",
+  "account_id": "2e169e038d9f430944291e98aa79e684",
+  "compatibility_date": "2026-10-14",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "routes": [
+    { "pattern": "md-tui.over9000.cc", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./web/dist",
+    "not_found_handling": "single-page-application"
+  }
+}
