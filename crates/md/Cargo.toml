@@ -1,0 +1,25 @@
+[package]
+name = "md"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+description = "Read Markdown in a full-screen terminal view"
+license = "MIT"
+readme = "../../README.md"
+keywords = ["markdown", "tui", "terminal", "viewer"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "md"
+path = "src/main.rs"
+
+[dependencies]
+# Upper bounds keep the graph on Rust 1.83. Newer clap, instability, and
+# unicode-segmentation releases need a newer toolchain.
+clap = { version = "=4.5.57", features = ["derive"] }
+crossterm = "=0.28.1"
+instability = "=0.3.10"
+pulldown-cmark = "=0.13.4"
+ratatui = "=0.29.0"
+unicode-segmentation = "=1.12.0"
+unicode-width = "=0.2.0"

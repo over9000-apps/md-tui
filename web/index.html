@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="ink">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>md — markdown viewer</title>
+    <meta
+      name="description"
+      content="Read CommonMark and GitHub Flavored Markdown in a terminal-inspired viewer. The browser companion to the md TUI."
+    />
+    <link rel="canonical" href="https://md-tui.over9000.cc/" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2314161c'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='ui-monospace,monospace' font-size='13' fill='%23f2cc8f'%3Emd%3C/text%3E%3C/svg%3E"
+    />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FG52JBJRPS"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-FG52JBJRPS');
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#doc">Skip to document</a>
+    <div class="app">
+      <aside class="outline" id="outline" aria-label="Table of contents">
+        <p class="outline-label">Outline</p>
+        <nav id="outline-list"></nav>
+      </aside>
+      <div class="reader">
+        <header class="topbar">
+          <span class="brand">md</span>
+          <span class="file-label" id="file-label">showcase.md</span>
+          <button type="button" id="outline-button">Outline</button>
+          <button type="button" id="open-button">Open</button>
+          <button type="button" id="showcase-button">Showcase</button>
+          <button type="button" id="theme-button" aria-label="Cycle theme">ink</button>
+        </header>
+        <article id="doc"></article>
+      </div>
+    </div>
+    <form id="search" class="search" hidden role="search">
+      <label for="search-input">/</label>
+      <input id="search-input" type="search" autocomplete="off" spellcheck="false" aria-label="Search" />
+    </form>
+    <footer class="status">
+      <p id="status-text" class="status-text">loading…</p>
+      <p class="hints"><b>j</b>/<b>k</b> scroll · <b>gg</b>/<b>G</b> · <b>/</b> find · <b>n</b>/<b>N</b> · <b>?</b> help</p>
+    </footer>
+    <div id="help" class="help" hidden>
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <h2 id="help-title">Keys</h2>
+        <table>
+          <tr><td>j k</td><td>Scroll one line. Arrows do the same.</td></tr>
+          <tr><td>d u</td><td>Half a page. Space and b move a page.</td></tr>
+          <tr><td>gg G</td><td>Top and bottom. Home and End too.</td></tr>
+          <tr><td>/ Enter</td><td>Search. Esc cancels. n and N move between hits.</td></tr>
+          <tr><td>[ ]</td><td>Previous and next heading.</td></tr>
+          <tr><td>o</td><td>Toggle the outline.</td></tr>
+          <tr><td>t</td><td>Cycle ink and paper.</td></tr>
+          <tr><td>Backspace</td><td>Back to the previous file.</td></tr>
+        </table>
+        <p>Open, drop, or paste a Markdown file. <code>?url=</code> fetches one. Esc closes this card.</p>
+      </div>
+    </div>
+    <div id="drop" class="drop" hidden>Drop a Markdown file</div>
+    <input id="file-input" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

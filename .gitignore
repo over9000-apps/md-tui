@@ -1,0 +1,9 @@
+/target
+**/*.rs.bk
+*.swp
+.DS_Store
+node_modules
+web/dist
+.wrangler
+.dev.vars
+.dev.vars.*

@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["crates/md"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
