@@ -459,3 +459,21 @@ window.addEventListener("beforeunload", () => {
 });
 
 boot();
+
+const installCopy = document.querySelector<HTMLButtonElement>("#install-copy");
+const installCmd = document.querySelector<HTMLElement>("#install-cmd");
+installCopy?.addEventListener("click", async () => {
+  const text = installCmd?.textContent ?? "";
+  try {
+    await navigator.clipboard.writeText(text);
+    installCopy.textContent = "Copied";
+  } catch {
+    const range = document.createRange();
+    if (installCmd) range.selectNodeContents(installCmd);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    installCopy.textContent = "Press ⌘C";
+  }
+  setTimeout(() => (installCopy.textContent = "Copy"), 1600);
+});
