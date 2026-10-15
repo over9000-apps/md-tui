@@ -1,0 +1,70 @@
+name: Seed history
+
+on:
+  push:
+    branches: [main, seed-history]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  administration: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: seed-history
+          fetch-depth: 1
+
+      - name: Restore original git history
+        run: |
+          set +e
+          {
+            set -euo pipefail
+            for part in history.bundle.b64.aa history.bundle.b64.ab history.bundle.b64.ac history.bundle.b64.ad; do
+              if [ ! -f "$part" ]; then
+                echo "::error::missing $part"
+                exit 1
+              fi
+              echo "have $part $(wc -c < "$part")"
+            done
+            cat history.bundle.b64.aa history.bundle.b64.ab history.bundle.b64.ac history.bundle.b64.ad | tr -d '[:space:]' | base64 -d > /tmp/md.bundle
+            git bundle verify /tmp/md.bundle
+            git fetch /tmp/md.bundle refs/heads/main:refs/heads/imported-main
+            git fetch /tmp/md.bundle refs/heads/cursor/md-tui-web-monorepo-f776:refs/heads/imported-feature
+            echo "imported-main $(git rev-parse imported-main)"
+            echo "imported-feature $(git rev-parse imported-feature)"
+            test "$(git rev-parse imported-main)" = "8331dd29ad6e48c46adb63f676b2bffb6edfc77f"
+            test "$(git rev-parse imported-feature)" = "88d44d5b57c13c00cb3ddc1c03bcee19c5bdaa02"
+            git push --force origin refs/heads/imported-main:refs/heads/main
+            git push --force origin refs/heads/imported-feature:refs/heads/cursor/md-tui-web-monorepo-f776
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}" -f default_branch=main || echo "default branch update failed"
+            echo SUCCESS
+          } > /tmp/seed.log 2>&1
+          echo $? > /tmp/seed.exit
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish log
+        if: always()
+        run: |
+          set -euo pipefail
+          code="$(cat /tmp/seed.exit 2>/dev/null || echo missing)"
+          {
+            echo "exit=$code"
+            echo
+            cat /tmp/seed.log 2>/dev/null || echo "no log"
+          } > /tmp/out.txt
+          git checkout --orphan seed-log
+          git rm -rf . || true
+          cp /tmp/out.txt SEED_LOG.txt
+          git add SEED_LOG.txt
+          git -c user.email="noreply@github.com" -c user.name="seed" commit -m "seed log"
+          git push --force origin HEAD:refs/heads/seed-log
+          if [ "$code" = "0" ]; then
+            git push origin --delete seed-history || true
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
