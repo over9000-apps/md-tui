@@ -227,7 +227,7 @@ fn layout_block(block: &Block, lay: &mut Lay, prefix: &[Seg], width: usize) {
         Block::Rule => {
             let inner = width.saturating_sub(segs_width(prefix)).max(1);
             let mut spans = prefix.to_vec();
-            spans.push(Seg::new("\u{2500}".repeat(inner), StyleId::Rule));
+            spans.push(Seg::new("─".repeat(inner), StyleId::Rule));
             lay.push(spans, false);
         }
         Block::Html(html) => {
@@ -273,11 +273,11 @@ fn layout_heading(level: u8, inlines: &[Inline], lay: &mut Lay, prefix: &[Seg], 
     layout_inlines(inlines, lay, prefix, prefix, width, style, false);
     // VS Code draws a full-width border under h1 and h2 only. h1 uses the
     // heavier rule. h3 (1.25em) gets a rule only as wide as the title, so it
-    // sits between a section rule and a plain h4. h4\u{2013}h6 have no rule.
+    // sits between a section rule and a plain h4. h4–h6 have no rule.
     let inner = width.saturating_sub(segs_width(prefix)).max(1);
     match level {
-        1 => push_rule(lay, prefix, inner, "\u{2501}", style),
-        2 => push_rule(lay, prefix, inner, "\u{2500}", StyleId::Rule),
+        1 => push_rule(lay, prefix, inner, "━", style),
+        2 => push_rule(lay, prefix, inner, "─", StyleId::Rule),
         3 => {
             let prefix_w = segs_width(prefix);
             let text_w = lay.lines[before..]
@@ -286,7 +286,7 @@ fn layout_heading(level: u8, inlines: &[Inline], lay: &mut Lay, prefix: &[Seg], 
                 .max()
                 .unwrap_or(0);
             if text_w > 0 {
-                push_rule(lay, prefix, text_w.min(inner), "\u{2500}", StyleId::Rule);
+                push_rule(lay, prefix, text_w.min(inner), "─", StyleId::Rule);
             }
         }
         _ => {}
@@ -307,7 +307,7 @@ fn layout_quote(
     width: usize,
 ) {
     let mut bar = prefix.to_vec();
-    bar.push(Seg::new("\u{258c} ", StyleId::QuoteBar));
+    bar.push(Seg::new("▌ ", StyleId::QuoteBar));
     if let Some(kind) = kind {
         let mut label = bar.clone();
         label.push(Seg::new(kind.label().to_string(), StyleId::Alert));
@@ -329,14 +329,14 @@ fn layout_list(
     for (index, item) in items.iter().enumerate() {
         let marker = if let Some(done) = item.checked {
             if done {
-                "\u{2713} ".to_string()
+                "✓ ".to_string()
             } else {
-                "\u{25cb} ".to_string()
+                "○ ".to_string()
             }
         } else if ordered {
             format!("{:width$}. ", start as usize + index, width = num_width)
         } else {
-            "\u{2022} ".to_string()
+            "• ".to_string()
         };
         let marker_style = match item.checked {
             Some(true) => StyleId::TaskDone,
@@ -376,7 +376,7 @@ fn layout_code(lang: Option<&str>, code: &str, lay: &mut Lay, prefix: &[Seg], _w
     if let Some(lang) = lang {
         if !lang.is_empty() {
             let mut spans = prefix.to_vec();
-            spans.push(Seg::new("\u{2502} ", StyleId::QuoteBar));
+            spans.push(Seg::new("│ ", StyleId::QuoteBar));
             spans.push(Seg::new(lang.to_string(), StyleId::Lang));
             lay.push(spans, true);
         }
@@ -395,7 +395,7 @@ fn layout_code(lang: Option<&str>, code: &str, lay: &mut Lay, prefix: &[Seg], _w
             format!("{:>width$} ", index + 1, width = digits),
             StyleId::Gutter,
         ));
-        spans.push(Seg::new("\u{2502} ", StyleId::QuoteBar));
+        spans.push(Seg::new("│ ", StyleId::QuoteBar));
         let expanded = line.replace('\t', "    ");
         for (text, style) in highlight_line(lang_key, &expanded, &mut state) {
             if text.is_empty() {
@@ -443,7 +443,7 @@ fn layout_table(
     push_row_lines(&header_lines, lay, prefix);
     let rule_width = widths.iter().sum::<usize>() + gap * widths.len().saturating_sub(1);
     let mut rule = prefix.to_vec();
-    rule.push(Seg::new("\u{2500}".repeat(rule_width.max(1)), StyleId::Rule));
+    rule.push(Seg::new("─".repeat(rule_width.max(1)), StyleId::Rule));
     lay.push(rule, false);
     for row in rows {
         let lines = cells_to_lines(row, &widths, alignments, cols, StyleId::TableCell, lay);
@@ -642,7 +642,7 @@ fn flatten_into(inlines: &[Inline], lay: &mut Lay, style: StyleId, atoms: &mut V
                 stamp_link(atoms, before, id);
                 if is_external(url) {
                     atoms.push(Atom::Text {
-                        text: "\u{2060}\u{2197}".to_string(),
+                        text: "\u{2060}↗".to_string(),
                         style: StyleId::Link,
                         link: Some(id),
                     });
@@ -857,7 +857,7 @@ mod tests {
 
     #[test]
     fn wraps_words_and_wide_chars() {
-        let doc = parse("hello world\n\n\u{4f60}\u{597d}\u{4e16}\u{754c}\n");
+        let doc = parse("hello world\n\n你好世界\n");
         let rendered = render(&doc.blocks, 8);
         let text = rendered
             .lines
@@ -892,7 +892,7 @@ mod tests {
         assert!(!joined.contains("```"));
         assert!(!joined.contains("# Title"));
         assert!(joined.contains("fn"));
-        assert!(joined.contains('\u{2197}'));
+        assert!(joined.contains('↗'));
     }
 
     #[test]
@@ -905,11 +905,11 @@ mod tests {
             .map(|l| l.plain.clone())
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(joined.contains('\u{2713}'), "{joined}");
+        assert!(joined.contains('✓'), "{joined}");
         assert!(joined.contains("done"), "{joined}");
         assert!(joined.contains("Left"), "{joined}");
         assert!(joined.contains("Right"), "{joined}");
-        assert!(joined.contains('\u{2500}'), "{joined}");
+        assert!(joined.contains('─'), "{joined}");
     }
 
     #[test]
@@ -926,15 +926,15 @@ mod tests {
         let two = at("Two");
         let three = at("Three");
         let four = at("Four");
-        assert!(lines[one + 1].chars().all(|ch| ch == '\u{2501}'));
+        assert!(lines[one + 1].chars().all(|ch| ch == '━'));
         assert_eq!(lines[one + 1].chars().count(), 40);
-        assert!(lines[two + 1].chars().all(|ch| ch == '\u{2500}'));
+        assert!(lines[two + 1].chars().all(|ch| ch == '─'));
         assert_eq!(lines[two + 1].chars().count(), 40);
-        assert!(lines[three + 1].chars().all(|ch| ch == '\u{2500}'));
+        assert!(lines[three + 1].chars().all(|ch| ch == '─'));
         assert_eq!(lines[three + 1].chars().count(), "Three".chars().count());
         assert!(lines[three + 1].chars().count() < lines[two + 1].chars().count());
         assert_ne!(lines.get(four + 1).copied().unwrap_or(""), lines[four]);
-        assert!(lines[four + 1].trim().is_empty() || !lines[four + 1].chars().all(|ch| ch == '\u{2500}'));
+        assert!(lines[four + 1].trim().is_empty() || !lines[four + 1].chars().all(|ch| ch == '─'));
         assert_eq!(rendered.headings[2].level, 3);
         assert_eq!(rendered.headings[3].level, 4);
         assert_eq!(rendered.headings[4].level, 5);
