@@ -5,7 +5,8 @@
 #
 # Env overrides:
 #   MD_INSTALL_DIR  where to put the binary (default: ~/.local/bin)
-#   MD_VERSION      release tag such as v0.1.0 (default: latest)
+#   MD_DOWNLOAD_BASE  where binaries live (default: https://md-tui.over9000.cc/download,
+#                     which serves the latest GitHub release of over9000-apps/md-tui)
 #
 # Supports macOS (arm64, x86_64), Linux (x86_64, aarch64), and WSL. If no
 # prebuilt binary fits, it falls back to `cargo install` from the repo.
@@ -14,7 +15,7 @@ set -euo pipefail
 REPO="over9000-apps/md-tui"
 BIN="md"
 INSTALL_DIR="${MD_INSTALL_DIR:-$HOME/.local/bin}"
-VERSION="${MD_VERSION:-latest}"
+BASE="${MD_DOWNLOAD_BASE:-https://md-tui.over9000.cc/download}"
 
 if [ -t 1 ]; then B=$'\033[1m'; R=$'\033[31m'; G=$'\033[32m'; Y=$'\033[33m'; N=$'\033[0m'; else B=; R=; G=; Y=; N=; fi
 info() { printf '%s\n' "${B}==>${N} $*"; }
@@ -59,13 +60,22 @@ sha256() {
 }
 
 install_prebuilt() { # target tmpdir -> 0 on success
-  local target="$1" tmp="$2" asset base
+  local target="$1" tmp="$2" asset base="$BASE" version=""
   asset="md-${target}"
-  if [ "$VERSION" = latest ]; then base="https://github.com/${REPO}/releases/latest/download"
-  else base="https://github.com/${REPO}/releases/download/${VERSION}"; fi
+  if fetch "${base}/VERSION" "${tmp}/VERSION" 2>/dev/null; then
+    version="$(head -c 32 "${tmp}/VERSION" | tr -d '\r\n')"
+    case "$version" in v[0-9]*) ;; *) version= ;; esac
+  fi
 
-  info "Downloading ${asset} (${VERSION})"
+  info "Downloading ${asset} ${version:-}"
   fetch "${base}/${asset}" "${tmp}/${BIN}" 2>/dev/null || return 1
+
+  # The site answers unknown paths with its HTML page, so make sure this is a
+  # real executable (ELF or Mach-O) before going further.
+  case "$(head -c 4 "${tmp}/${BIN}" | od -An -tx1 | tr -d ' \n')" in
+    7f454c46|cffaedfe|cefaedfe|cafebabe) ;;
+    *) return 1 ;;
+  esac
 
   if fetch "${base}/SHA256SUMS" "${tmp}/SHA256SUMS" 2>/dev/null; then
     local want got
@@ -76,7 +86,7 @@ install_prebuilt() { # target tmpdir -> 0 on success
       info "Checksum OK"
     fi
   else
-    warn "no SHA256SUMS in the release; skipping checksum check"
+    warn "no SHA256SUMS next to the binary; skipping checksum check"
   fi
 
   chmod +x "${tmp}/${BIN}"
@@ -116,13 +126,13 @@ path_hint() {
 }
 
 main() {
-  local target tmp
+  local target
   target="$(detect_target)"
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  TMP_DIR="$(mktemp -d)"; tmp="$TMP_DIR"
+  trap 'rm -rf "$TMP_DIR"' EXIT
 
   if ! install_prebuilt "$target" "$tmp"; then
-    warn "no prebuilt binary for ${target} (${VERSION})"
+    warn "no prebuilt binary for ${target} at ${BASE}"
     install_cargo || die "install Rust (https://rustup.rs) and re-run, or build from https://github.com/${REPO}"
   fi
 
