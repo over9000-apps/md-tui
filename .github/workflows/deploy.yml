@@ -1,0 +1,96 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-md-tui
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Fail if Cloudflare secrets are missing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=0
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN"
+            missing=1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "Refusing to deploy without Cloudflare credentials."
+            exit 1
+          fi
+          if [ "$CLOUDFLARE_ACCOUNT_ID" != "2e169e038d9f430944291e98aa79e684" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID must be 2e169e038d9f430944291e98aa79e684"
+            exit 1
+          fi
+          echo "Cloudflare secrets are present."
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify built HTML contains Analytics
+        run: |
+          test -s web/dist/index.html
+          if ! grep -Fq 'G-FG52JBJRPS' web/dist/index.html; then
+            echo "::error::Google Analytics tag missing from web/dist/index.html"
+            exit 1
+          fi
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
+
+      - name: Smoke check production HTML and Analytics
+        run: |
+          url="https://md-tui.over9000.cc/"
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          for attempt in {1..10}; do
+            code="$(curl --connect-timeout 10 --max-time 30 -sS -o "$body" -w "%{http_code}" "$url" || true)"
+            echo "attempt ${attempt}: HTTP ${code}"
+            if [ "$code" = "200" ] && grep -Fq 'G-FG52JBJRPS' "$body"; then
+              echo "Smoke check passed: ${url}"
+              exit 0
+            fi
+            if [ "$attempt" -lt 10 ]; then
+              sleep 10
+            fi
+          done
+          echo "::error::Smoke check failed: ${url} must return HTTP 200 and contain G-FG52JBJRPS"
+          exit 1
