@@ -22,7 +22,7 @@ Install a prebuilt binary (macOS arm64/x86_64, Linux x86_64/aarch64, WSL) into `
 curl -fsSL https://md-tui.over9000.cc/install.sh | bash
 ```
 
-Set `MD_INSTALL_DIR` to pick another directory or `MD_VERSION=v0.1.0` to pin a release. Releases come from pushing a `v*` tag (`.github/workflows/release.yml`).
+Set `MD_INSTALL_DIR` to pick another directory. Releases come from pushing a `v*` tag (`.github/workflows/release.yml`); the deploy then serves that release's binaries from `https://md-tui.over9000.cc/download/` because the repo is private.
 
 From source, with Rust 1.83 or newer (edition 2021), on Linux or macOS. The repo pins 1.83 in `rust-toolchain.toml`.
 

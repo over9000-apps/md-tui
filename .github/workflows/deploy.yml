@@ -69,6 +69,22 @@ jobs:
             exit 1
           fi
 
+      # The repo is private, so GitHub release URLs 404 for the public. Serve
+      # the latest release binaries from the site for install.sh.
+      - name: Bundle latest release binaries under /download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/dist/download
+          if tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null)"; then
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" -D web/dist/download -p 'md-*' -p SHA256SUMS
+            echo "$tag" > web/dist/download/VERSION
+            (cd web/dist/download && sha256sum -c SHA256SUMS)
+            ls -l web/dist/download
+          else
+            echo "::warning::No GitHub release yet; install.sh will fall back to cargo"
+          fi
+
       - name: Deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
