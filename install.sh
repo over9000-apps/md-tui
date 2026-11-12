@@ -132,8 +132,16 @@ main() {
   trap 'rm -rf "$TMP_DIR"' EXIT
 
   if ! install_prebuilt "$target" "$tmp"; then
-    warn "no prebuilt binary for ${target} at ${BASE}"
-    install_cargo || die "install Rust (https://rustup.rs) and re-run, or build from https://github.com/${REPO}"
+    gh_base="https://github.com/${REPO}/releases/latest/download"
+    if [ "$BASE" != "$gh_base" ]; then
+      warn "no prebuilt binary for ${target} at ${BASE}; trying GitHub releases"
+      BASE="$gh_base"
+      install_prebuilt "$target" "$tmp" && main_ok=1 || true
+    fi
+    if [ "${main_ok:-}" != 1 ]; then
+      warn "no prebuilt binary for ${target} at ${BASE}"
+      install_cargo || die "install Rust (https://rustup.rs) and re-run, or build from https://github.com/${REPO}"
+    fi
   fi
 
   echo
