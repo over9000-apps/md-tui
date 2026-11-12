@@ -16,6 +16,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, gb]
+    env:
+      COREPACK_HOME: ${{ runner.temp }}/corepack
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -91,21 +93,51 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy
 
-      - name: Smoke check production HTML and Analytics
+      # The public door https://md-tui.over9000.cc is served from the R2
+      # prefix techdemos-static/md-tui, not the Worker custom domain.
+      - name: Deploy R2 (live door)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: SKIP_INSTALL=1 SKIP_BUILD=1 bash scripts/deploy-r2.sh
+
+      - name: Smoke check production HTML, Analytics, and installer
         run: |
-          url="https://md-tui.over9000.cc/"
+          base="https://md-tui.over9000.cc"
           body="$(mktemp)"
           trap 'rm -f "$body"' EXIT
+          ok=0
           for attempt in {1..10}; do
-            code="$(curl --connect-timeout 10 --max-time 30 -sS -o "$body" -w "%{http_code}" "$url" || true)"
-            echo "attempt ${attempt}: HTTP ${code}"
+            code="$(curl --connect-timeout 10 --max-time 30 -sS -o "$body" -w "%{http_code}" "$base/" || true)"
+            echo "attempt ${attempt}: GET / -> HTTP ${code}"
             if [ "$code" = "200" ] && grep -Fq 'G-FG52JBJRPS' "$body"; then
-              echo "Smoke check passed: ${url}"
-              exit 0
+              ok=1
+              break
             fi
             if [ "$attempt" -lt 10 ]; then
               sleep 10
             fi
           done
-          echo "::error::Smoke check failed: ${url} must return HTTP 200 and contain G-FG52JBJRPS"
-          exit 1
+          if [ "$ok" != 1 ]; then
+            echo "::error::Smoke check failed: ${base}/ must return HTTP 200 and contain G-FG52JBJRPS"
+            exit 1
+          fi
+          code="$(curl --connect-timeout 10 --max-time 30 -sS -o "$body" -w "%{http_code}" "$base/install.sh" || true)"
+          echo "GET /install.sh -> HTTP ${code}"
+          if [ "$code" != "200" ] || ! grep -q '^#!/usr/bin/env bash' "$body"; then
+            echo "::error::Smoke check failed: ${base}/install.sh must be the installer script"
+            exit 1
+          fi
+          code="$(curl --connect-timeout 10 --max-time 30 -sS -o "$body" -w "%{http_code}" "$base/download/VERSION" || true)"
+          echo "GET /download/VERSION -> HTTP ${code}"
+          if [ "$code" = "200" ]; then
+            magic="$(curl --connect-timeout 10 --max-time 30 -sS "$base/download/md-linux-aarch64" | head -c 4 | od -An -tx1 | tr -d ' \n')"
+            echo "md-linux-aarch64 magic=$magic"
+            if [ "$magic" != "7f454c46" ]; then
+              echo "::error::Smoke check failed: ${base}/download/md-linux-aarch64 is not an ELF binary"
+              exit 1
+            fi
+          else
+            echo "::warning::No /download/VERSION on the door; install.sh will fall back to cargo"
+          fi
+          echo "Smoke check passed: ${base}"
