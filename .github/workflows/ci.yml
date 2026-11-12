@@ -11,7 +11,7 @@ jobs:
     name: cargo test
     # GitHub-hosted runners are blocked by org billing; macOS is covered by the
     # cross-compiled release builds.
-    runs-on: [self-hosted, gb]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
 
   web:
     name: web test and build
-    runs-on: [self-hosted, gb]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v4

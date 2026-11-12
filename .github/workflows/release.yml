@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: [self-hosted, gb]
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
