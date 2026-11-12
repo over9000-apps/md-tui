@@ -16,11 +16,13 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, gb]
-    env:
-      COREPACK_HOME: ${{ runner.temp }}/corepack
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      - name: Use a writable COREPACK_HOME
+        run: |
+          mkdir -p "$RUNNER_TEMP/corepack"
+          echo "COREPACK_HOME=$RUNNER_TEMP/corepack" >> "$GITHUB_ENV"
 
       - name: Fail if Cloudflare secrets are missing
         env:
