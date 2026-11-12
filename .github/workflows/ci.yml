@@ -12,11 +12,13 @@ jobs:
     # GitHub-hosted runners are blocked by org billing; macOS is covered by the
     # cross-compiled release builds.
     runs-on: [self-hosted, gb]
-    env:
-      COREPACK_HOME: ${{ runner.temp }}/corepack
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      - name: Use a writable COREPACK_HOME
+        run: |
+          mkdir -p "$RUNNER_TEMP/corepack"
+          echo "COREPACK_HOME=$RUNNER_TEMP/corepack" >> "$GITHUB_ENV"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.83.0
@@ -27,11 +29,13 @@ jobs:
   web:
     name: web test and build
     runs-on: [self-hosted, gb]
-    env:
-      COREPACK_HOME: ${{ runner.temp }}/corepack
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      - name: Use a writable COREPACK_HOME
+        run: |
+          mkdir -p "$RUNNER_TEMP/corepack"
+          echo "COREPACK_HOME=$RUNNER_TEMP/corepack" >> "$GITHUB_ENV"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
